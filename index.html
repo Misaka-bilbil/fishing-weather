@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>渔人天气 · 钓鱼气象站</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: system-ui, 'Segoe UI', 'Roboto', 'Noto Sans', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(145deg, #1b4d6e 0%, #0e3a52 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* 头部 */
+        .header {
+            background: rgba(255, 255, 240, 0.92);
+            backdrop-filter: blur(8px);
+            border-radius: 2rem;
+            padding: 1rem 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo h1 {
+            font-size: 1.9rem;
+            color: #1e4a6e;
+            letter-spacing: 2px;
+        }
+
+        .logo p {
+            color: #2c6e46;
+            font-weight: bold;
+            font-size: 0.85rem;
+        }
+
+        .search-box {
+            background: white;
+            border-radius: 40px;
+            padding: 0.3rem 0.6rem;
+            display: flex;
+            gap: 0.5rem;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-box input {
+            border: none;
+            padding: 0.6rem 1rem;
+            border-radius: 40px;
+            width: 240px;
+            outline: none;
+            font-size: 0.9rem;
+        }
+
+        .search-box button {
+            background: #2c6e46;
+            border: none;
+            color: white;
+            padding: 0 1.2rem;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+        .search-box button:hover {
+            background: #1e5536;
+        }
+
+        /* 主卡片 */
+        .weather-main {
+            background: rgba(255, 255, 250, 0.96);
+            border-radius: 2rem;
+            padding: 1.8rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .location {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1f3b4a;
+            border-left: 6px solid #f5a623;
+            padding-left: 1rem;
+            margin-bottom: 1.2rem;
+        }
+
+        .fish-index {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            justify-content: space-between;
+            background: #eef4fa;
+            border-radius: 1.5rem;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.8rem;
+        }
+
+        .index-card {
+            text-align: center;
+            flex: 1;
+            min-width: 100px;
+        }
+
+        .index-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #d45a1e;
+        }
+
+        .index-label {
+            font-size: 0.85rem;
+            color: #2c5a74;
+            letter-spacing: 1px;
+        }
+
+        .weather-detail {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1.2rem;
+            margin: 1.5rem 0;
+        }
+
+        .detail-item {
+            background: #f9fbfd;
+            border-radius: 1.2rem;
+            padding: 0.8rem 1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .detail-icon {
+            font-size: 2rem;
+        }
+
+        .detail-info h4 {
+            font-size: 0.8rem;
+            color: #5b7f95;
+        }
+
+        .detail-info p {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #1f3b4a;
+        }
+
+        .advice {
+            background: #e8f0e3;
+            border-radius: 1.2rem;
+            padding: 1rem 1.5rem;
+            margin-top: 1rem;
+            border-left: 6px solid #2c6e46;
+        }
+
+        .advice h3 {
+            color: #2c6e46;
+            margin-bottom: 0.5rem;
+        }
+
+        /* 未来5天 */
+        .forecast {
+            margin-top: 2rem;
+        }
+
+        .forecast h2 {
+            color: #ffefcf;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+
+        .days {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: space-between;
+        }
+
+        .day-card {
+            background: rgba(255, 255, 240, 0.9);
+            border-radius: 1.5rem;
+            padding: 1rem;
+            flex: 1;
+            min-width: 100px;
+            text-align: center;
+            backdrop-filter: blur(4px);
+            transition: transform 0.2s;
+        }
+
+        .day-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .day-name {
+            font-weight: bold;
+            color: #1e4a6e;
+            font-size: 1rem;
+        }
+
+        .day-temp {
+            font-size: 1.3rem;
+            margin: 0.5rem 0;
+        }
+
+        .day-fish {
+            background: #d9e6b3;
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #3a6b2f;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: white;
+            font-size: 1.2rem;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 2.5rem;
+            color: #c0e0f0;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 680px) {
+            .header {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            .fish-index {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="logo">
+            <h1>🎣 渔人天气</h1>
+            <p>气压 · 潮汐等效 · 鱼情预报</p>
+        </div>
+        <div class="search-box">
+            <input type="text" id="cityInput" placeholder="例如：杭州市、上海市 (请带&quot;市&quot;字)" value="温州市">
+            <button id="searchBtn">查询</button>
+        </div>
+    </div>
+
+    <div id="mainContent">
+        <div class="loading">🌊 正在获取最新气象数据，请稍候...</div>
+    </div>
+    <footer>数据来源：Open-Meteo 全球气象模型 | 气压趋势基于未来3小时预报 | 钓鱼指数仅供参考</footer>
+</div>
+
+<script>
+    // 默认坐标：温州市中心 (百度拾取约 28.0027, 120.5881)
+    const DEFAULT_LAT = 28.0027;
+    const DEFAULT_LON = 120.5881;
+    const DEFAULT_NAME = "温州市";
+
+    // 全局存储当前坐标及城市显示名
+    let currentLat = DEFAULT_LAT;
+    let currentLon = DEFAULT_LON;
+    let currentCityName = DEFAULT_NAME;
+
+    // 获取DOM元素
+    const mainContent = document.getElementById('mainContent');
+    const cityInput = document.getElementById('cityInput');
+    const searchBtn = document.getElementById('searchBtn');
+
+    // 辅助：钓鱼指数计算 (0-100)
+    // 参数: 温度(℃), 风速(km/h), 湿度(%), 气压(hPa), 气压趋势字符串('rising','falling','stable')
+    function calculateFishingIndex(temp, windSpeed, humidity, pressure, pressureTrend) {
+        let score = 50;
+
+        // 温度影响 (最佳 15-25℃)
+        if (temp >= 15 && temp <= 25) score += 15;
+        else if (temp < 5 || temp > 35) score -= 15;
+        else if (temp < 10 || temp > 30) score -= 5;
+
+        // 风速影响 (km/h) 最佳 1-10 km/h (约1-3级)
+        if (windSpeed >= 1 && windSpeed <= 10) score += 15;
+        else if (windSpeed > 20) score -= 10;
+        else if (windSpeed > 15) score -= 5;
+
+        // 湿度影响 (过高闷热)
+        if (humidity > 80) score -= 10;
+        else if (humidity < 40) score += 5;   // 干燥天气有时鱼口也好
+
+        // 气压影响 (核心)
+        if (pressureTrend === 'falling') score += 20;   // 气压下降，鱼活跃
+        else if (pressureTrend === 'rising') score -= 15;
+        // 气压绝对值影响：990-1005hPa 比较适合
+        if (pressure >= 990 && pressure <= 1005) score += 10;
+        else if (pressure > 1020) score -= 10;
+
+        // 边界处理
+        return Math.min(100, Math.max(0, Math.round(score)));
+    }
+
+    // 根据逐小时气压数组和当前小时索引，判断气压趋势 (比较当前与+3小时)
+    function getPressureTrend(hourlyPressure, currentHourIndex) {
+        if (!hourlyPressure || hourlyPressure.length === 0) return 'stable';
+        const nowPressure = hourlyPressure[currentHourIndex];
+        const futureIndex = Math.min(currentHourIndex + 3, hourlyPressure.length - 1);
+        const futurePressure = hourlyPressure[futureIndex];
+        if (futurePressure < nowPressure) return 'falling';
+        if (futurePressure > nowPressure) return 'rising';
+        return 'stable';
+    }
+
+    // 从Open-Meteo获取天气数据 (当前+逐小时气压+每日)
+    async function fetchWeather(lat, lon) {
+        // 请求当前天气 + 逐小时 (气压,温度,湿度,风速) + 未来7天基础天气
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=pressure_msl,temperature_2m,relativehumidity_2m,windspeed_10m&daily=weathercode,temperature_2m_max,temperature_2m_min,windspeed_10m_max&timezone=Asia/Shanghai&forecast_days=7`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        return data;
+    }
+
+    // 获取每日中午12点的数据（用来计算每日钓鱼指数）
+    function getDailyNoonData(hourly, targetDateStr) {
+        // hourly.time 格式 "2025-04-18T00:00"
+        // 找到当天中午12:00的索引
+        for (let i = 0; i < hourly.time.length; i++) {
+            const timeStr = hourly.time[i];
+            if (timeStr.includes(`${targetDateStr}T12:00`)) {
+                return {
+                    pressure: hourly.pressure_msl[i],
+                    temp: hourly.temperature_2m[i],
+                    humidity: hourly.relativehumidity_2m[i],
+                    wind: hourly.windspeed_10m[i]
+                };
+            }
+        }
+        return null; // 未找到则返回null
+    }
+
+    // 渲染界面
+    function renderUI(weatherData, cityName) {
+        const current = weatherData.current_weather;
+        const hourly = weatherData.hourly;
+        const daily = weatherData.daily;
+
+        // 找到当前时间在hourly数组中的索引 (基于当前时间字符串)
+        const now = new Date();
+        const currentHourStr = now.getFullYear() + '-' +
+            String(now.getMonth() + 1).padStart(2, '0') + '-' +
+            String(now.getDate()).padStart(2, '0') + 'T' +
+            String(now.getHours()).padStart(2, '0') + ':00';
+        let currentHourIndex = hourly.time.findIndex(t => t === currentHourStr);
+        if (currentHourIndex === -1) currentHourIndex = 0; // fallback
+
+        // 当前气压、温度、湿度、风速
+        const currentPressure = hourly.pressure_msl[currentHourIndex];
+        const currentTemp = current.temperature;
+        const currentWind = current.windspeed;
+        // 湿度需要从hourly获取同小时
+        const currentHumidity = hourly.relativehumidity_2m[currentHourIndex];
+
+        // 气压趋势
+        const pressureTrend = getPressureTrend(hourly.pressure_msl, currentHourIndex);
+        const trendText = pressureTrend === 'falling' ? '↓ 下降 (鱼口转好)' : (pressureTrend === 'rising' ? '↑ 上升 (鱼情谨慎)' : '→ 平稳');
+
+        // 钓鱼指数
+        const fishScore = calculateFishingIndex(currentTemp, currentWind, currentHumidity, currentPressure, pressureTrend);
+
+        // 出钓建议
+        let advice = '';
+        if (fishScore >= 80) advice = '🎉 爆护指数极高！气压下降，鱼群活跃，建议选择浅滩、铧尖，使用活饵或腥香饵，抓住窗口期。';
+        else if (fishScore >= 65) advice = '👍 天气比较给力，风力适中，可以出钓。早晚时段更佳，钓深水或草边有收获。';
+        else if (fishScore >= 45) advice = '🤔 鱼情一般，气压较高或闷热，建议调整钓法，找流水或深水区，适当减少饵料雾化。';
+        else advice = '⚠️ 气象条件较差，鱼不开口。适合在家绑钩、保养渔具，或者夜钓尝试。';
+
+        // 构建当前天气详细HTML
+        const mainHtml = `
+            <div class="weather-main">
+                <div class="location">🎯 ${cityName} · 钓鱼气象站</div>
+                <div class="fish-index">
+                    <div class="index-card"><div class="index-value">${fishScore}</div><div class="index-label">钓鱼指数 (0-100)</div></div>
+                    <div class="index-card"><div class="index-value">${currentPressure} hPa</div><div class="index-label">气压 · ${trendText}</div></div>
+                    <div class="index-card"><div class="index-value">${currentTemp}°C</div><div class="index-label">实时气温</div></div>
+                </div>
+                <div class="weather-detail">
+                    <div class="detail-item"><div class="detail-icon">💨</div><div class="detail-info"><h4>风速</h4><p>${currentWind} km/h</p></div></div>
+                    <div class="detail-item"><div class="detail-icon">💧</div><div class="detail-info"><h4>湿度</h4><p>${currentHumidity}%</p></div></div>
+                    <div class="detail-item"><div class="detail-icon">🌡️</div><div class="detail-info"><h4>体感参考</h4><p>${currentTemp}°C</p></div></div>
+                    <div class="detail-item"><div class="detail-icon">⏱️</div><div class="detail-info"><h4>气压趋势</h4><p>${pressureTrend === 'falling' ? '未来3小时下降' : (pressureTrend === 'rising' ? '未来3小时上升' : '平稳')}</p></div></div>
+                </div>
+                <div class="advice">
+                    <h3>🐟 出钓建议</h3>
+                    <p>${advice}</p>
+                </div>
+            </div>
+        `;
+
+        // 未来5天预报 (取daily前5天)
+        let forecastHtml = `<div class="forecast"><h2>📅 未来5天钓鱼指数趋势</h2><div class="days">`;
+        const daysToShow = Math.min(5, daily.time.length);
+        for (let i = 0; i < daysToShow; i++) {
+            const dateStr = daily.time[i];
+            const dateObj = new Date(dateStr);
+            const weekName = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][dateObj.getDay()];
+            const displayDate = `${dateObj.getMonth() + 1}/${dateObj.getDate()} (${weekName})`;
+            const tempMax = daily.temperature_2m_max[i];
+            const tempMin = daily.temperature_2m_min[i];
+
+            // 获取当天中午12点的气象参数来计算指数
+            const noonData = getDailyNoonData(hourly, dateStr);
+            let dayFishScore = 50;
+            let dayPressure = '--';
+            let dayTrend = 'stable';
+            if (noonData) {
+                dayPressure = noonData.pressure;
+                // 简单趋势：比较中午气压和第二天中午气压? 为了简化，使用当天与后一天比较（如果有后一天数据）
+                let nextNoon = null;
+                if (i + 1 < daysToShow) {
+                    const nextDateStr = daily.time[i + 1];
+                    nextNoon = getDailyNoonData(hourly, nextDateStr);
+                }
+                if (nextNoon && nextNoon.pressure) {
+                    dayTrend = nextNoon.pressure < noonData.pressure ? 'falling' : (nextNoon.pressure > noonData.pressure ? 'rising' : 'stable');
+                } else {
+                    dayTrend = 'stable';
+                }
+                dayFishScore = calculateFishingIndex(noonData.temp, noonData.wind, noonData.humidity, noonData.pressure, dayTrend);
+            }
+
+            let fishDesc = dayFishScore >= 70 ? '🎣 很适宜' : (dayFishScore >= 50 ? '⛅ 尚可' : '🌧️ 不佳');
+            forecastHtml += `
+                <div class="day-card">
+                    <div class="day-name">${displayDate}</div>
+                    <div class="day-temp">${tempMin}~${tempMax}°C</div>
+                    <div class="day-fish">🐟 ${dayFishScore}分</div>
+                    <div style="font-size:0.75rem; margin-top:6px;">${fishDesc}</div>
+                    <div style="font-size:0.7rem; color:#4a6a7f;">气压: ${dayPressure} hPa</div>
+                </div>
+            `;
+        }
+        forecastHtml += `</div></div>`;
+
+        // 组合完整内容
+        mainContent.innerHTML = mainHtml + forecastHtml;
+    }
+
+    // 显示错误信息
+    function showError(msg) {
+        mainContent.innerHTML = `<div class="weather-main" style="background:#ffe6e6;"><div class="location">⚠️ 出错啦</div><div class="advice"><p>${msg}<br>请检查网络或城市名称，稍后重试。</p></div></div>`;
+    }
+
+    // 根据城市名获取坐标 (使用Open-Meteo Geocoding API)
+    async function getCoordinates(cityName) {
+        const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=zh`;
+        const resp = await fetch(geoUrl);
+        const data = await resp.json();
+        if (!data.results || data.results.length === 0) {
+            throw new Error(`未找到城市“${cityName}”，请尝试输入完整名称并带上"市"字（例如：杭州市）`);
+        }
+        const result = data.results[0];
+        return {
+            lat: result.latitude,
+            lon: result.longitude,
+            name: `${result.name}${result.admin1 ? ' · ' + result.admin1 : ''}${result.country ? ' · ' + result.country : ''}`
+        };
+    }
+
+    // 主流程：根据城市名称加载天气
+    async function loadWeatherByCity(cityName) {
+        mainContent.innerHTML = '<div class="loading">🔍 搜索城市并获取气象数据...</div>';
+        try {
+            const coord = await getCoordinates(cityName);
+            currentLat = coord.lat;
+            currentLon = coord.lon;
+            currentCityName = coord.name;
+            // 获取天气
+            const weather = await fetchWeather(currentLat, currentLon);
+            renderUI(weather, currentCityName);
+        } catch (err) {
+            console.error(err);
+            showError(err.message);
+            // 降级：尝试使用默认城市
+            if (cityName !== DEFAULT_NAME) {
+                showError(`无法获取“${cityName}”天气，已回退至默认地点。`);
+                loadWeatherByCity(DEFAULT_NAME);
+            }
+        }
+    }
+
+    // 页面初始加载默认城市
+    loadWeatherByCity(DEFAULT_NAME);
+
+    // 搜索按钮事件
+    searchBtn.addEventListener('click', () => {
+        let query = cityInput.value.trim();
+        if (query === "") {
+            alert("请输入城市名，例如：温州市");
+            return;
+        }
+        // 如果用户输入没有带"市"，可以友好提醒但不强制，因为地理编码也能识别
+        if (!query.includes('市')) {
+            // 只是提醒，不阻止搜索
+            console.log("提示：建议城市名后加'市'字（如：杭州市）以提高匹配精度");
+        }
+        loadWeatherByCity(query);
+    });
+
+    // 支持回车键搜索
+    cityInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            searchBtn.click();
+        }
+    });
+</script>
+</body>
+</html>
