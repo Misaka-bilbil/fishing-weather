@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>路亚天气 · 渔汛</title>
+    <meta name="theme-color" id="themeColor" content="#f5f5f7">
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #f5f5f7;
+            --card-bg: #ffffff;
+            --text-primary: #1d1d1f;
+            --text-secondary: #6e6e73;
+            --border-light: #e8e8ed;
+            --metric-bg: #f9f9fb;
+            --button-bg: #007aff;
+            --button-hover: #005fc1;
+            --shadow: 0 8px 28px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.02);
+            --modal-overlay: rgba(0,0,0,0.4);
+        }
+        body.dark {
+            --bg-color: #1c1c1e;
+            --card-bg: #2c2c2e;
+            --text-primary: #ffffff;
+            --text-secondary: #98989e;
+            --border-light: #3a3a3c;
+            --metric-bg: #3a3a3c;
+            --shadow: 0 8px 28px rgba(0,0,0,0.2);
+            --modal-overlay: rgba(0,0,0,0.7);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.4;
+            padding: 0 20px 40px;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .nav-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0 10px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-light);
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #1e7e34, #0f5c26);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+        .dark-toggle {
+            background: var(--metric-bg);
+            border: none;
+            border-radius: 30px;
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            color: var(--text-primary);
+        }
+        .search-area { display: flex; gap: 8px; }
+        .city-input {
+            background: var(--card-bg);
+            border: 1px solid var(--border-light);
+            border-radius: 980px;
+            padding: 8px 16px;
+            font-size: 15px;
+            width: 200px;
+            outline: none;
+            color: var(--text-primary);
+        }
+        .search-btn {
+            background: var(--button-bg);
+            border: none;
+            border-radius: 980px;
+            padding: 8px 20px;
+            font-size: 15px;
+            font-weight: 500;
+            color: white;
+            cursor: pointer;
+        }
+        .card {
+            background: var(--card-bg);
+            border-radius: 28px;
+            box-shadow: var(--shadow);
+            padding: 28px 24px;
+            margin-bottom: 24px;
+        }
+        .location-title { font-size: 28px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+        .metrics-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+        .metric-card {
+            flex: 1;
+            background: var(--metric-bg);
+            border-radius: 20px;
+            padding: 16px;
+            text-align: center;
+        }
+        .metric-value { font-size: 38px; font-weight: 600; }
+        .metric-label { font-size: 14px; color: var(--text-secondary); }
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .detail-item {
+            background: var(--metric-bg);
+            border-radius: 18px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .detail-icon { font-size: 28px; }
+        .detail-text h4 { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+        .detail-text p { font-size: 18px; font-weight: 600; }
+        .chart-container { margin: 20px 0; background: var(--metric-bg); border-radius: 20px; padding: 16px; }
+        canvas { max-height: 250px; width: 100%; }
+        .advice-block {
+            background: var(--metric-bg);
+            border-radius: 20px;
+            padding: 18px;
+            margin-bottom: 20px;
+        }
+        .advice-block h3 { font-size: 18px; margin-bottom: 10px; }
+        .spot-list { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 12px; }
+        .spot-item {
+            background: var(--card-bg);
+            border-radius: 18px;
+            padding: 14px;
+            flex: 1;
+            min-width: 160px;
+            border: 1px solid var(--border-light);
+        }
+        .forecast-section { margin-top: 20px; }
+        .forecast-scroll {
+            display: flex;
+            gap: 14px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            scrollbar-width: thin;
+        }
+        .forecast-card {
+            background: var(--metric-bg);
+            border-radius: 24px;
+            padding: 16px;
+            min-width: 120px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+        }
+        .forecast-card:hover {
+            transform: translateY(-4px);
+            background: var(--card-bg);
+            border: 1px solid var(--border-light);
+        }
+        .forecast-date { font-weight: 600; font-size: 16px; margin-bottom: 6px; }
+        .forecast-icon { font-size: 28px; margin: 8px 0; }
+        .forecast-temp { font-size: 15px; color: var(--text-secondary); }
+        .forecast-score {
+            background: var(--card-bg);
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 500;
+            margin-top: 8px;
+        }
+        .map-container {
+            margin: 20px 0;
+            background: var(--metric-bg);
+            border-radius: 20px;
+            overflow: hidden;
+            height: 300px;
+        }
+        #map { height: 100%; width: 100%; }
+        .message-board {
+            background: var(--metric-bg);
+            border-radius: 20px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .message-list {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+        .message-item {
+            background: var(--card-bg);
+            border-radius: 18px;
+            padding: 12px 16px;
+            margin-bottom: 12px;
+            border: 1px solid var(--border-light);
+        }
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .message-nickname { font-weight: 600; color: var(--text-primary); }
+        .message-time { font-size: 12px; }
+        .message-content { font-size: 15px; line-height: 1.4; }
+        .message-location {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .post-btn {
+            background: var(--button-bg);
+            border: none;
+            border-radius: 30px;
+            padding: 10px 20px;
+            color: white;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: var(--modal-overlay);
+            backdrop-filter: blur(4px);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: var(--card-bg);
+            border-radius: 32px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 24px;
+            position: relative;
+        }
+        .modal-close {
+            position: absolute;
+            top: 16px; right: 20px;
+            font-size: 28px;
+            cursor: pointer;
+        }
+        footer { text-align: center; margin-top: 40px; font-size: 12px; color: var(--text-secondary); }
+        .skeleton {
+            background: linear-gradient(90deg, var(--metric-bg) 25%, var(--border-light) 50%, var(--metric-bg) 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 16px;
+        }
+        @keyframes loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        .refresh-indicator { text-align: center; font-size: 12px; padding: 8px; color: var(--text-secondary); transition: opacity 0.2s; }
+        @media (max-width: 740px) {
+            body { padding: 0 12px 32px; }
+            .nav-bar { flex-direction: column; align-items: stretch; }
+            .actions { justify-content: flex-end; }
+            .search-area { width: 100%; }
+            .city-input { flex: 1; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="nav-bar">
+        <div class="logo">路亚 · 渔汛</div>
+        <div class="actions">
+            <button class="dark-toggle" id="darkToggle">🌙 暗黑</button>
+            <div class="search-area">
+                <input type="text" id="cityInput" class="city-input" placeholder="搜索城市，如 温州市" value="温州市">
+                <button id="searchBtn" class="search-btn">更新</button>
+            </div>
+        </div>
+    </div>
+    <div id="refreshIndicator" class="refresh-indicator" style="opacity:0;">↓ 下拉刷新</div>
+    <div id="mainContent"><div class="card"><div class="skeleton" style="height: 450px;"></div></div></div>
+    
+    <!-- 地图卡片 -->
+    <div class="card">
+        <h3 style="margin-bottom: 12px;">🗺️ 附近钓点地图</h3>
+        <p style="font-size: 14px; color: var(--text-secondary); margin-bottom: 16px;">点击地图任意位置可记录钓点坐标，发布留言时可附带位置</p>
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <!-- 留言板（基于 GitHub Issues） -->
+    <div class="card">
+        <h3 style="margin-bottom: 16px;">💬 钓友留言板 · 分享钓点鱼情</h3>
+        <div class="message-board">
+            <div class="message-list" id="messageList">
+                <div style="text-align:center; padding:20px;">加载留言中...</div>
+            </div>
+            <button class="post-btn" id="postMessageBtn">📝 发表留言（需 GitHub 账号）</button>
+            <p style="font-size: 12px; color: var(--text-secondary); margin-top: 12px;">※ 点击按钮跳转到 GitHub Issue 页面，登录后即可留言。留言会自动显示在此处。</p>
+        </div>
+    </div>
+
+    <footer>数据 Open-Meteo | 地图 Leaflet | 留言板基于 GitHub Issues</footer>
+</div>
+
+<!-- 天气详情模态框 -->
+<div id="dayModal" class="modal">
+    <div class="modal-content">
+        <span class="modal-close" id="modalClose">&times;</span>
+        <div id="modalBody">加载中...</div>
+    </div>
+</div>
+
+<script>
+    // ======================== 配置 GitHub 留言板（已填好仓库，请修改 Issue 编号） ========================
+    const GITHUB_REPO = "Misaka-bilbil/fishing-weather";   // 你的仓库
+    const ISSUE_NUMBER = 1;  // ⚠️ 请改成你实际创建的 Issue 编号（例如 1）
+    
+    const COMMENTS_API = `https://api.github.com/repos/${GITHUB_REPO}/issues/${ISSUE_NUMBER}/comments`;
+    const ISSUE_URL = `https://github.com/${GITHUB_REPO}/issues/${ISSUE_NUMBER}`;
+
+    // 加载留言
+    async function loadMessages() {
+        try {
+            const res = await fetch(COMMENTS_API);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const comments = await res.json();
+            renderMessages(comments);
+        } catch(e) {
+            console.error("加载留言失败", e);
+            document.getElementById('messageList').innerHTML = '<div style="text-align:center; padding:20px;">留言加载失败，请检查网络或 GitHub API 限制</div>';
+        }
+    }
+
+    function renderMessages(comments) {
+        const container = document.getElementById('messageList');
+        if (!comments || comments.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:20px;">暂无留言，快来发表第一条吧！</div>';
+            return;
+        }
+        const html = comments.map(comment => {
+            const date = new Date(comment.created_at);
+            const timeStr = `${date.getMonth()+1}/${date.getDate()} ${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}`;
+            let locationHtml = '';
+            const coordMatch = comment.body.match(/📍坐标：([-\d.]+),([-\d.]+)/);
+            if (coordMatch) {
+                const lat = parseFloat(coordMatch[1]);
+                const lng = parseFloat(coordMatch[2]);
+                locationHtml = `<div class="message-location">📍 钓点坐标: ${lat.toFixed(4)}, ${lng.toFixed(4)} <span style="cursor:pointer; color:#007aff;" onclick="flyToLocation(${lat}, ${lng})">[查看地图]</span></div>`;
+            }
+            let content = comment.body.replace(/📍坐标：[\d\.,\-]+/, '').trim();
+            if (!content) content = "(无文字内容)";
+            return `
+                <div class="message-item">
+                    <div class="message-header">
+                        <span class="message-nickname">${escapeHtml(comment.user.login)}</span>
+                        <span class="message-time">${timeStr}</span>
+                    </div>
+                    <div class="message-content">${escapeHtml(content)}</div>
+                    ${locationHtml}
+                </div>
+            `;
+        }).join('');
+        container.innerHTML = html;
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m]);
+    }
+
+    function openPostPage() {
+        window.open(ISSUE_URL, '_blank');
+    }
+
+    // 地图
+    let map;
+    let currentMapLat = 28.0027, currentMapLon = 120.5881;
+    let tempMarker = null;
+
+    function initMap(lat, lon) {
+        if (map) {
+            map.setView([lat, lon], 12);
+            return;
+        }
+        map = L.map('map').setView([lat, lon], 12);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> & CartoDB',
+            subdomains: 'abcd',
+            maxZoom: 19
+        }).addTo(map);
+        map.on('click', function(e) {
+            const { lat, lng } = e.latlng;
+            if (tempMarker) map.removeLayer(tempMarker);
+            tempMarker = L.marker([lat, lng]).addTo(map)
+                .bindPopup('点击“发表留言”时可将此坐标附加到留言中（需手动复制）').openPopup();
+            const coordText = `📍坐标：${lat.toFixed(4)},${lng.toFixed(4)}`;
+            navigator.clipboard.writeText(coordText).then(() => {
+                alert(`坐标已复制：${coordText}\n在 GitHub 留言中粘贴即可标记钓点。`);
+            }).catch(() => {
+                alert(`请手动记录坐标：${coordText}`);
+            });
+            setTimeout(() => { if (tempMarker) tempMarker.closePopup(); }, 5000);
+        });
+    }
+
+    function flyToLocation(lat, lng) {
+        if (map) map.flyTo([lat, lng], 15);
+    }
+    window.flyToLocation = flyToLocation;
+
+    // ======================== 天气核心（与之前相同） ========================
+    let currentLat = 28.0027, currentLon = 120.5881, currentCity = "温州市";
+    let fullWeatherData = null;
+    let multiChart = null;
+
+    async function fetchWeatherWithRetry(lat, lon, retry = 1) {
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=pressure_msl,temperature_2m,relativehumidity_2m,windspeed_10m,precipitation&daily=weathercode,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max&timezone=Asia/Shanghai&forecast_days=7`;
+        try {
+            const res = await fetch(url);
+            if(!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.json();
+        } catch(e) {
+            if(retry > 0) { await new Promise(r => setTimeout(r, 1000)); return fetchWeatherWithRetry(lat, lon, retry - 1); }
+            throw e;
+        }
+    }
+
+    function getWeatherIcon(code) {
+        const map = {0:"☀️",1:"🌤️",2:"⛅",3:"☁️",45:"🌫️",48:"🌫️",51:"🌦️",53:"🌦️",55:"🌦️",61:"🌧️",63:"🌧️",65:"🌧️",80:"🌦️",95:"⛈️"};
+        return map[code] || "❓";
+    }
+    function getWeatherText(code) {
+        const map = {0:"晴天",1:"晴间多云",2:"局部多云",3:"多云",45:"雾",48:"雾",51:"毛毛雨",53:"毛毛雨",55:"毛毛雨",61:"小雨",63:"中雨",65:"大雨",80:"阵雨",95:"雷暴"};
+        return map[code] || "未知";
+    }
+
+    function calculateLureIndex(temp, wind, hum, press, trend) {
+        let s = 45;
+        if(temp>=16&&temp<=26) s+=16; else if(temp>30) s-=18; else if(temp<8) s-=22;
+        if(wind>=3&&wind<=12) s+=14; else if(wind>28) s-=22;
+        if(hum>=45&&hum<=70) s+=8; else if(hum>85) s-=16;
+        if(trend==='falling') s+=22; else if(trend==='rising') s-=20;
+        if(press>=995&&press<=1008) s+=10; else if(press>1018) s-=14;
+        return Math.min(100, Math.max(0, Math.round(s)));
+    }
+
+    function getPressureTrend(hourlyPress, idx) {
+        if(!hourlyPress || idx+3 >= hourlyPress.length) return 'stable';
+        const now = hourlyPress[idx];
+        const future = hourlyPress[idx+3];
+        if(future < now) return 'falling';
+        if(future > now) return 'rising';
+        return 'stable';
+    }
+
+    function getLureAdvice(score) {
+        if(score>=75) return "🔥 黄金窗口！鱼活跃，推荐水面系、米诺、VIB。";
+        if(score>=60) return "👍 鱼情较好，亮片、软虫、小胖子。";
+        if(score>=40) return "🤔 活性一般，精细作钓，小铅头钩、内德。";
+        return "⚠️ 鱼口差，建议休息或夜钓。";
+    }
+
+    function getSpotRecommendations(city, score) {
+        let base = [];
+        if(city.includes("温州")) base = ["瓯江沿岸","三垟湿地","楠溪江"];
+        else if(city.includes("杭州")) base = ["千岛湖","富春江","湘湖"];
+        else if(city.includes("上海")) base = ["淀山湖","崇明北沿","滴水湖"];
+        else base = ["河流缓流区","水库大坝","湖泊草区"];
+        let desc = score>=70 ? "窗口期可突击" : (score<=35 ? "需精细作钓" : "常规作钓");
+        return base.map(n => ({ name: n, desc }));
+    }
+
+    function getUVDescription(uv) {
+        if(uv === undefined || uv === null) return "--";
+        if(uv <= 2) return "低";
+        if(uv <= 5) return "中等";
+        if(uv <= 7) return "高";
+        if(uv <= 10) return "非常高";
+        return "极端";
+    }
+
+    function drawMultiChart(hourlyData, startIdx) {
+        const ctx = document.getElementById('multiChart')?.getContext('2d');
+        if(!ctx) return;
+        const points = Math.min(24, hourlyData.time.length - startIdx);
+        const labels = hourlyData.time.slice(startIdx, startIdx+points).map(t => t.split('T')[1].substring(0,5));
+        const pressures = hourlyData.pressure_msl.slice(startIdx, startIdx+points);
+        const temps = hourlyData.temperature_2m.slice(startIdx, startIdx+points);
+        const precip = hourlyData.precipitation.slice(startIdx, startIdx+points);
+        if(multiChart) multiChart.destroy();
+        multiChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: '气压 (hPa)', data: pressures, borderColor: '#007aff', backgroundColor: 'transparent', yAxisID: 'y', tension: 0.3, fill: false },
+                    { label: '温度 (°C)', data: temps, borderColor: '#ff9500', backgroundColor: 'transparent', yAxisID: 'y1', tension: 0.3, fill: false },
+                    { label: '降水 (mm)', data: precip, type: 'bar', backgroundColor: '#34c759', yAxisID: 'y2', barPercentage: 0.8, categoryPercentage: 0.9 }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: true,
+                interaction: { mode: 'index', intersect: false },
+                plugins: { tooltip: { mode: 'index' }, legend: { position: 'top' } },
+                scales: {
+                    y: { title: { display: true, text: '气压 (hPa)' }, position: 'left' },
+                    y1: { title: { display: true, text: '温度 (°C)' }, position: 'right', grid: { drawOnChartArea: false } },
+                    y2: { title: { display: true, text: '降水 (mm)' }, position: 'right', grid: { drawOnChartArea: false }, min: 0 }
+                }
+            }
+        });
+        const windowDiv = document.getElementById('windowTip');
+        if(windowDiv) windowDiv.innerHTML = "🎣 窗口期: 5:00-8:00, 17:00-19:00 (当地时)  ·  气压下降时最佳";
+    }
+
+    async function renderUI(data, cityName) {
+        fullWeatherData = data;
+        const current = data.current_weather;
+        const hourly = data.hourly;
+        const daily = data.daily;
+        if(!current || !hourly || !daily) throw new Error("数据不完整");
+
+        const now = new Date();
+        const hourStr = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')+'T'+String(now.getHours()).padStart(2,'0')+':00';
+        let idx = hourly.time.findIndex(t=>t===hourStr);
+        if(idx===-1) idx=0;
+
+        const press = hourly.pressure_msl[idx];
+        const temp = current.temperature;
+        const wind = current.windspeed;
+        const hum = hourly.relativehumidity_2m[idx];
+        const trend = getPressureTrend(hourly.pressure_msl, idx);
+        const score = calculateLureIndex(temp, wind, hum, press, trend);
+        const advice = getLureAdvice(score);
+        const spots = getSpotRecommendations(cityName, score);
+
+        let sunrise = '--', sunset = '--';
+        if(daily.sunrise && daily.sunrise[0]) sunrise = daily.sunrise[0].split('T')[1] || '--';
+        if(daily.sunset && daily.sunset[0]) sunset = daily.sunset[0].split('T')[1] || '--';
+        let uvIndex = '--', uvDesc = '';
+        if(daily.uv_index_max && daily.uv_index_max[0] !== undefined) {
+            uvIndex = daily.uv_index_max[0];
+            uvDesc = getUVDescription(uvIndex);
+        }
+
+        const mainHtml = `
+            <div class="card">
+                <div class="location-title">🎯 ${cityName} · 渔汛</div>
+                <div class="metrics-row">
+                    <div class="metric-card"><div class="metric-value">${score}</div><div class="metric-label">路亚指数</div></div>
+                    <div class="metric-card"><div class="metric-value">${press} hPa</div><div class="metric-label">气压 ${trend==='falling'?'↓窗口期':(trend==='rising'?'↑谨慎':'→')}</div></div>
+                    <div class="metric-card"><div class="metric-value">${temp}°C</div><div class="metric-label">气温</div></div>
+                </div>
+                <div class="detail-grid">
+                    <div class="detail-item"><div class="detail-icon">${getWeatherIcon(current.weathercode)}</div><div class="detail-text"><h4>天气</h4><p>${getWeatherText(current.weathercode)}</p></div></div>
+                    <div class="detail-item"><div class="detail-icon">💨</div><div class="detail-text"><h4>风速</h4><p>${wind} km/h</p></div></div>
+                    <div class="detail-item"><div class="detail-icon">💧</div><div class="detail-text"><h4>湿度</h4><p>${hum}%</p></div></div>
+                    <div class="detail-item"><div class="detail-icon">🌅</div><div class="detail-text"><h4>日出/日落</h4><p>${sunrise} / ${sunset}</p></div></div>
+                    <div class="detail-item"><div class="detail-icon">☀️</div><div class="detail-text"><h4>紫外线</h4><p>${uvIndex} ${uvDesc}</p></div></div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="multiChart" width="400" height="200"></canvas>
+                    <div id="windowTip" style="font-size:12px; text-align:center; margin-top:8px;"></div>
+                </div>
+                <div class="advice-block"><h3>🐟 鱼情分析</h3><div>${advice}</div></div>
+                <div class="advice-block"><h3>🎯 附近标点</h3><div class="spot-list">${spots.map(s=>`<div class="spot-item"><b>📍 ${s.name}</b><br>${s.desc}</div>`).join('')}</div></div>
+            </div>
+            <div class="forecast-section"><div class="forecast-scroll" id="forecastScroll"></div></div>
+        `;
+        document.getElementById('mainContent').innerHTML = mainHtml;
+
+        drawMultiChart(hourly, idx);
+
+        let forecastHtml = '';
+        for(let i=0;i<Math.min(5,daily.time.length);i++) {
+            const dateStr = daily.time[i];
+            const d = new Date(dateStr);
+            const week = ['周日','周一','周二','周三','周四','周五','周六'][d.getDay()];
+            const monthDay = `${d.getMonth()+1}/${d.getDate()}`;
+            const tMax = daily.temperature_2m_max[i];
+            const tMin = daily.temperature_2m_min[i];
+            const weatherCode = daily.weathercode[i];
+            const icon = getWeatherIcon(weatherCode);
+            let dayScore = 50;
+            const noonIdx = hourly.time.findIndex(t => t.includes(dateStr.split('T')[0]+'T12:00'));
+            if(noonIdx !== -1) {
+                dayScore = calculateLureIndex(hourly.temperature_2m[noonIdx], hourly.windspeed_10m[noonIdx], hourly.relativehumidity_2m[noonIdx], hourly.pressure_msl[noonIdx], 'stable');
+            }
+            forecastHtml += `
+                <div class="forecast-card" data-day-index="${i}">
+                    <div class="forecast-date">${monthDay} ${week}</div>
+                    <div class="forecast-icon">${icon}</div>
+                    <div class="forecast-temp">${tMin}~${tMax}°C</div>
+                    <div class="forecast-score">🎣 ${dayScore}</div>
+                </div>
+            `;
+        }
+        document.getElementById('forecastScroll').innerHTML = forecastHtml;
+
+        document.querySelectorAll('.forecast-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                const idx = card.getAttribute('data-day-index');
+                if(idx !== null) showDayDetail(parseInt(idx));
+            });
+        });
+    }
+
+    async function showDayDetail(dayIndex) {
+        if(!fullWeatherData) return;
+        const daily = fullWeatherData.daily;
+        const hourly = fullWeatherData.hourly;
+        if(dayIndex >= daily.time.length) return;
+        const dateStr = daily.time[dayIndex];
+        const d = new Date(dateStr);
+        const week = ['周日','周一','周二','周三','周四','周五','周六'][d.getDay()];
+        const dateLabel = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 ${week}`;
+        const tMax = daily.temperature_2m_max[dayIndex];
+        const tMin = daily.temperature_2m_min[dayIndex];
+        const weatherCode = daily.weathercode[dayIndex];
+        const weatherIcon = getWeatherIcon(weatherCode);
+        const weatherText = getWeatherText(weatherCode);
+        let sunrise = '--', sunset = '--';
+        if(daily.sunrise && daily.sunrise[dayIndex]) sunrise = daily.sunrise[dayIndex].split('T')[1];
+        if(daily.sunset && daily.sunset[dayIndex]) sunset = daily.sunset[dayIndex].split('T')[1];
+        let uv = daily.uv_index_max?.[dayIndex] || '--';
+        const uvDesc = getUVDescription(uv);
+        const dayStart = dateStr.split('T')[0];
+        const hourlyIndices = [];
+        for(let i=0;i<hourly.time.length;i++) {
+            if(hourly.time[i].startsWith(dayStart)) hourlyIndices.push(i);
+        }
+        const hourlyTemps = hourlyIndices.map(i => hourly.temperature_2m[i]);
+        const hourlyPress = hourlyIndices.map(i => hourly.pressure_msl[i]);
+        const hourlyPrecip = hourlyIndices.map(i => hourly.precipitation[i]);
+        const hourLabels = hourlyIndices.map(i => hourly.time[i].split('T')[1].substring(0,5));
+        let noonIdx = hourlyIndices.find(i => hourly.time[i].includes('T12:00'));
+        let dayScore = 50;
+        if(noonIdx !== undefined) {
+            dayScore = calculateLureIndex(hourly.temperature_2m[noonIdx], hourly.windspeed_10m[noonIdx], hourly.relativehumidity_2m[noonIdx], hourly.pressure_msl[noonIdx], 'stable');
+        }
+        const modalBody = `
+            <div style="margin-bottom:20px;">
+                <div class="detail-grid">
+                    <div class="detail-item"><div class="detail-icon">${weatherIcon}</div><div class="detail-text"><h4>天气</h4><p>${weatherText}</p></div></div>
+                    <div class="detail-item"><div class="detail-icon">🌡️</div><div class="detail-text"><h4>温度</h4><p>${tMin}~${tMax}°C</p></div></div>
+                    <div class="detail-item"><div class="detail-icon">🌅</div><div class="detail-text"><h4>日出/日落</h4><p>${sunrise} / ${sunset}</p></div></div>
+                    <div class="detail-item"><div class="detail-icon">☀️</div><div class="detail-text"><h4>紫外线</h4><p>${uv} ${uvDesc}</p></div></div>
+                    <div class="detail-item"><div class="detail-icon">🎣</div><div class="detail-text"><h4>路亚指数</h4><p>${dayScore}</p></div></div>
+                </div>
+                <div class="chart-container" style="margin-top:16px;">
+                    <canvas id="dayChart" width="400" height="180"></canvas>
+                </div>
+                <div style="font-size:12px; text-align:center; margin-top:8px;">逐小时气压、温度、降水趋势</div>
+            </div>
+        `;
+        const modal = document.getElementById('dayModal');
+        const modalBodyDiv = document.getElementById('modalBody');
+        modalBodyDiv.innerHTML = `<div class="modal-title">📅 ${dateLabel}</div>` + modalBody;
+        modal.style.display = 'flex';
+        const ctx = document.getElementById('dayChart')?.getContext('2d');
+        if(ctx) {
+            if(window.dayChartInstance) window.dayChartInstance.destroy();
+            window.dayChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: hourLabels,
+                    datasets: [
+                        { label: '气压 (hPa)', data: hourlyPress, borderColor: '#007aff', yAxisID: 'y', tension: 0.3, fill: false },
+                        { label: '温度 (°C)', data: hourlyTemps, borderColor: '#ff9500', yAxisID: 'y1', tension: 0.3, fill: false },
+                        { label: '降水 (mm)', data: hourlyPrecip, type: 'bar', backgroundColor: '#34c759', yAxisID: 'y2', barPercentage: 0.8 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: true,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        y: { title: { display: true, text: '气压 (hPa)' }, position: 'left' },
+                        y1: { title: { display: true, text: '温度 (°C)' }, position: 'right', grid: { drawOnChartArea: false } },
+                        y2: { title: { display: true, text: '降水 (mm)' }, position: 'right', grid: { drawOnChartArea: false }, min: 0 }
+                    }
+                }
+            });
+        }
+    }
+
+    async function loadWeather(city) {
+        const mainDiv = document.getElementById('mainContent');
+        mainDiv.innerHTML = `<div class="card"><div class="skeleton" style="height: 450px;"></div></div>`;
+        try {
+            const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=zh`;
+            const geoRes = await fetch(geoUrl);
+            const geoData = await geoRes.json();
+            if(!geoData.results || geoData.results.length === 0) throw new Error(`未找到城市“${city}”`);
+            const { latitude, longitude, name, admin1 } = geoData.results[0];
+            currentLat = latitude; currentLon = longitude;
+            currentCity = `${name}${admin1 ? '·'+admin1 : ''}`;
+            const weather = await fetchWeatherWithRetry(currentLat, currentLon, 1);
+            await renderUI(weather, currentCity);
+            if (map) {
+                map.setView([currentLat, currentLon], 12);
+            } else {
+                initMap(currentLat, currentLon);
+            }
+        } catch(e) {
+            console.error(e);
+            mainDiv.innerHTML = `<div class="card"><div>⚠️ 加载失败: ${e.message}<br>已回退至温州市</div></div>`;
+            if(city !== "温州市") loadWeather("温州市");
+        }
+    }
+
+    // 下拉刷新
+    let startY = 0;
+    document.body.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; });
+    document.body.addEventListener('touchmove', (e) => {
+        const moveY = e.touches[0].clientY;
+        if(moveY - startY > 60 && window.scrollY === 0) {
+            document.getElementById('refreshIndicator').style.opacity = '1';
+        }
+    });
+    document.body.addEventListener('touchend', () => {
+        if(document.getElementById('refreshIndicator').style.opacity === '1') {
+            loadWeather(document.getElementById('cityInput').value.trim() || "温州市");
+            document.getElementById('refreshIndicator').style.opacity = '0';
+        }
+    });
+
+    // 暗黑模式
+    const darkToggle = document.getElementById('darkToggle');
+    darkToggle.addEventListener('click', () => {
+        document.body.classList.toggle('dark');
+        const isDark = document.body.classList.contains('dark');
+        darkToggle.textContent = isDark ? '☀️ 明亮' : '🌙 暗黑';
+        document.getElementById('themeColor').setAttribute('content', isDark ? '#1c1c1e' : '#f5f5f7');
+        if(multiChart) multiChart.update();
+    });
+
+    // 模态框关闭
+    const modal = document.getElementById('dayModal');
+    document.getElementById('modalClose').onclick = () => { modal.style.display = 'none'; };
+    window.onclick = (e) => { if(e.target === modal) modal.style.display = 'none'; };
+
+    // 发表留言按钮
+    document.getElementById('postMessageBtn').onclick = openPostPage;
+
+    // 初始化
+    loadWeather("温州市");
+    loadMessages();
+    setInterval(loadMessages, 60000);
+</script>
+</body>
+</html>
